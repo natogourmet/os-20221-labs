@@ -1,6 +1,0 @@
-#! /bin/sh
-echo "1801" | sudo ./bridge_unload
-sudo ./bridge_load
-gcc -o clientBridge clientBridge.c
-./clientBridge 6
-tail -n 5 /var/log/syslog

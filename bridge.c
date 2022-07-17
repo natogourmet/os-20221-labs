@@ -25,6 +25,11 @@ MODULE_AUTHOR("Jheisson Argiro Lopez Restrepo");
 MODULE_LICENSE("Dual BSD/GPL");
 
 LIST_HEAD(stack);
+LIST_HEAD(stack_2);
+LIST_HEAD(high_q);
+LIST_HEAD(mid_q);
+LIST_HEAD(low_q);
+
 
 static void add_element_to_stack(char *node_element_msg)
 {
@@ -32,7 +37,32 @@ static void add_element_to_stack(char *node_element_msg)
 	tmp_element = kmalloc(sizeof(struct string_node), GFP_KERNEL);
 	strcpy(tmp_element->message, node_element_msg);
 	INIT_LIST_HEAD(&tmp_element->list);
-	list_add(&(tmp_element->list), &stack);
+	list_add_tail(&(tmp_element->list), &stack);
+}
+
+static void add_element_to_high_queue(char *node_element_msg)
+{
+	struct string_node *tmp_element;
+	tmp_element = kmalloc(sizeof(struct string_node), GFP_KERNEL);
+	strcpy(tmp_element->message, node_element_msg);
+	INIT_LIST_HEAD(&tmp_element->list);
+	list_add_tail(&(tmp_element->list), &high_q);
+}
+static void add_element_to_mid_queue(char *node_element_msg)
+{
+	struct string_node *tmp_element;
+	tmp_element = kmalloc(sizeof(struct string_node), GFP_KERNEL);
+	strcpy(tmp_element->message, node_element_msg);
+	INIT_LIST_HEAD(&tmp_element->list);
+	list_add_tail(&(tmp_element->list), &mid_q);
+}
+static void add_element_to_low_queue(char *node_element_msg)
+{
+	struct string_node *tmp_element;
+	tmp_element = kmalloc(sizeof(struct string_node), GFP_KERNEL);
+	strcpy(tmp_element->message, node_element_msg);
+	INIT_LIST_HEAD(&tmp_element->list);
+	list_add_tail(&(tmp_element->list), &low_q);
 }
 
 static void add_element_to_list(char *node_element_msg)
@@ -52,14 +82,84 @@ static void invert_list(void)
 	{
 		tmp_element = list_entry(watch, struct string_node, list);
 		printk(KERN_INFO "%s", tmp_element->message);
-		// list_del(&(tmp_element->list));
-		// list_add(&(tmp_element->list), &stack);
+		list_del(&(tmp_element->list));
+		list_add(&(tmp_element->list), &stack);
 	}
-	// list_for_each_safe(watch, next, &stack)
-	// {
-	// 	tmp_element = list_entry(watch, struct string_node, list);
-	// 	// printk(KERN_INFO "%s", tmp_element->message);
-	// }
+
+	list_for_each_safe(watch, next, &stack)
+	{
+		tmp_element = list_entry(watch, struct string_node, list);
+		printk(KERN_INFO "%s", tmp_element->message);
+	}
+	printk(KERN_INFO "\n");
+}
+
+static void rotate_right(void)
+{
+	struct string_node *tmp_element;
+	tmp_element = list_last_entry(&stack, struct string_node, list);
+	list_del(&(tmp_element->list));
+	list_add(&(tmp_element->list), &stack);
+}
+
+void destroy_list(void)
+{
+	struct string_node *tmp_element;
+	struct list_head *watch, *next;
+	list_for_each_safe(watch, next, &stack)
+	{
+		tmp_element = list_entry(watch, struct string_node, list);
+		list_del(&(tmp_element->list));
+		kfree(tmp_element);
+	}
+	kfree(&stack);
+}
+
+void concat_lists(void) {
+	struct string_node *tmp_element;
+	struct list_head *watch, *next;
+	list_for_each_safe(watch, next, &stack_2)
+	{
+		tmp_element = list_entry(watch, struct string_node, list);
+		list_del(&(tmp_element->list));
+		list_add_tail(&(tmp_element->list), &stack);
+	}
+}
+
+void find_highest_val(unsigned long arg) {
+	struct string_node *tmp_element;
+	char highest_str[100] = "\0";
+	char tmp_str[100];
+	struct list_head *watch, *next;
+	list_for_each_safe(watch, next, &stack)
+	{
+		tmp_element = list_entry(watch, struct string_node, list);
+		strcpy(tmp_str, tmp_element->message);
+		if (strcmp(tmp_str, highest_str) > 0) strcpy(highest_str, tmp_str);
+	}
+
+	raw_copy_to_user((char *)arg, highest_str, 100);
+}
+
+void clean_list(void) 
+{
+	struct string_node *tmp_element;
+	struct string_node *tmp_element_2;
+	struct list_head *watch, *next, *watch2, *next2;
+
+	list_for_each_safe(watch, next, &stack)
+	{
+		tmp_element = list_entry(watch, struct string_node, list);
+		list_for_each_safe(watch2, next2, &stack)
+		{
+			tmp_element_2 = list_entry(watch2, struct string_node, list);
+			if (strcmp(tmp_element->message, tmp_element_2->message) == 0)
+			{
+				list_del(&(tmp_element_2->list));
+				kfree(tmp_element);
+			}
+		}
+	}
 }
 
 void mylist_exit(void)
@@ -93,27 +193,38 @@ static long bridge_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 	case BRIDGE_W_HIGH_PRIOR_Q:
 		raw_copy_from_user(message, (char *)arg, 100);
-		printk(KERN_INFO "message %s\n", message);
+		add_element_to_high_queue(message);
 		break;
 
 	case BRIDGE_W_MIDDLE_PRIOR_Q:
-		printk(KERN_INFO "message %s\n", "bla1");
+		raw_copy_from_user(message, (char *)arg, 100);
+		add_element_to_mid_queue(message);
 		break;
 
 	case BRIDGE_W_LOW_PRIOR_Q:
-		printk(KERN_INFO "message %s\n", "bla2");
+		raw_copy_from_user(message, (char *)arg, 100);
+		add_element_to_low_queue(message);
 		break;
 
 	case BRIDGE_R_HIGH_PRIOR_Q:
-		printk(KERN_INFO "message %s\n", "bla3");
+		tmp_element = list_first_entry(&high_q, struct string_node, list);
+		list_del(&(tmp_element->list));
+		raw_copy_to_user((char *)arg, tmp_element->message, 100);
+		kfree(tmp_element);
 		break;
 
 	case BRIDGE_R_MIDDLE_PRIOR_Q:
-		printk(KERN_INFO "message %s\n", "bla4");
+		tmp_element = list_first_entry(&mid_q, struct string_node, list);
+		list_del(&(tmp_element->list));
+		raw_copy_to_user((char *)arg, tmp_element->message, 100);
+		kfree(tmp_element);
 		break;
 
 	case BRIDGE_R_LOW_PRIOR_Q:
-		printk(KERN_INFO "message %s\n", "bla5");
+		tmp_element = list_first_entry(&low_q, struct string_node, list);
+		list_del(&(tmp_element->list));
+		raw_copy_to_user((char *)arg, tmp_element->message, 100);
+		kfree(tmp_element);
 		break;
 
 	case BRIDGE_STATE_Q:
@@ -133,7 +244,7 @@ static long bridge_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		break;
 
 	case BRIDGE_R_S:
-		tmp_element = list_first_entry(&stack, struct string_node, list);
+		tmp_element = list_last_entry(&stack, struct string_node, list);
 		list_del(&(tmp_element->list));
 		raw_copy_to_user((char *)arg, tmp_element->message, 100);
 		kfree(tmp_element);
@@ -165,7 +276,9 @@ static long bridge_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 	case BRIDGE_R_L:
 		tmp_element = list_first_entry(&stack, struct string_node, list);
+		list_del(&(tmp_element->list));
 		raw_copy_to_user((char *)arg, tmp_element->message, 100);
+		kfree(tmp_element);
 		break;
 
 	case BRIDGE_INVERT_L:
@@ -174,16 +287,16 @@ static long bridge_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 
 	case BRIDGE_ROTATE_L:
 		get_user(data, (int *)arg);
+		rotate_right();
 		printk(KERN_INFO "message %d\n", data);
 		break;
 
 	case BRIDGE_CLEAN_L:
-		printk(KERN_INFO "message %s\n", "bla18");
+		clean_list();
 		break;
 
 	case BRIDGE_GREATER_VAL_L:
-		// strcpy((char *)arg, "MensajePrueba");
-		printk(KERN_INFO "message %s\n", "bla19");
+		find_highest_val(arg);
 		break;
 
 	case BRIDGE_END_L:
@@ -199,6 +312,7 @@ static long bridge_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		break;
 
 	case BRIDGE_DESTROY_L:
+		destroy_list();
 		printk(KERN_INFO "message %s\n", "bla24");
 	}
 	return return_value;

@@ -81,13 +81,13 @@ void read_all_messages(int fd)
 	char message[100];
 	while (send_empty_command(fd, BRIDGE_STATE_S) > 0)
 	{
-		read_message(fd, BRIDGE_R_S, message);
-		printf("%s", message);
+		read_message(fd, BRIDGE_R_L, message);
+		printf("%s\n", message);
 	}
 }
 
 // Punto 1
-void reverseLineReadingFromFile(int fd)
+void reverse_lines_from_file(int fd)
 {
 	FILE *fp;
 	char *line = NULL;
@@ -99,38 +99,197 @@ void reverseLineReadingFromFile(int fd)
 		exit(EXIT_FAILURE);
 
 	// send_empty_command(fd, BRIDGE_CREATE_S);
-
+	printf("CURRENT LIST:\n");
 	while ((read = getline(&line, &len, fp)) != -1)
 	{
 		write_message(fd, BRIDGE_W_S, line);
-		// printf("%s", line);
+		printf("%s", line);
 	}
 
 	fclose(fp);
 	if (line)
 		free(line);
 
+	printf("\nNEW LIST:\n");
 	read_all_messages(fd);
-		// send_empty_command(fd, BRIDGE_DESTROY_S);			//Destroy a stack completely releasing the memory (IMPORTANT!!)
-
-
+	// send_empty_command(fd, BRIDGE_DESTROY_S);			//Destroy a stack completely releasing the memory (IMPORTANT!!)
 }
 
-void generateList(int fd) {
+// Punto 3
+int verify_closing_brackets(int fd)
+{
+	FILE *fp;
+	char *ch;
+	fp = fopen("code_input.txt", "r");
+	if (fp == NULL)
+		exit(EXIT_FAILURE);
+
+	while ((ch = fgetc(fp)) != EOF)
+	{
+		printf("in: %c\n", ch);
+		if (ch == '(')
+		{
+			char charIn[100] = "(";
+			write_message(fd, BRIDGE_W_S, charIn);
+		}
+		else if (ch == '{')
+		{
+			char charIn[100] = "{";
+			write_message(fd, BRIDGE_W_S, charIn);
+		}
+		else if (ch == ')')
+		{
+			if (send_empty_command(fd, BRIDGE_STATE_S) > 0)
+			{
+				char charOut[100];
+				read_message(fd, BRIDGE_R_S, charOut);
+				if (charOut[0] != '(')
+				{
+					return 0;
+				}
+			}
+			else
+			{
+				return 0;
+			}
+		}
+		else if (ch == '}')
+		{
+			if (send_empty_command(fd, BRIDGE_STATE_S) > 0)
+			{
+				char charOut[100];
+				read_message(fd, BRIDGE_R_S, charOut);
+
+				if (charOut[0] != '{')
+				{
+					return 0;
+				}
+			}
+			else
+			{
+				return 0;
+			}
+		}
+	}
+
+	if (send_empty_command(fd, BRIDGE_STATE_S) > 0)
+	{
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+
+	fclose(fp);
+}
+
+void generate_prior_q(int fd)
+{
+	write_message(fd, BRIDGE_W_LOW_PRIOR_Q, "Message 1");
+	printf("Message 1, low prior\n");
+	write_message(fd, BRIDGE_W_HIGH_PRIOR_Q, "Message 2");
+	printf("Message 2, high prior\n");
+	write_message(fd, BRIDGE_W_MIDDLE_PRIOR_Q, "Message 3");
+	printf("Message 3, mid prior\n");
+	write_message(fd, BRIDGE_W_LOW_PRIOR_Q, "Message 4");
+	printf("Message 4, low prior\n");
+	write_message(fd, BRIDGE_W_HIGH_PRIOR_Q, "Message 5");
+	printf("Message 5, high prior\n");
+}
+
+// Punto 4
+void prior_queue(int fd) 
+{
+	printf("\nCURRENT QUEUE:\n");
+	generate_prior_q(fd);
+}
+
+void generate_list(int fd)
+{
 	write_message(fd, BRIDGE_W_L, "Message 1");
+	printf("Message 1\n");
 	write_message(fd, BRIDGE_W_L, "Message 2");
+	printf("Message 2\n");
 	write_message(fd, BRIDGE_W_L, "Message 3");
+	printf("Message 3\n");
 	write_message(fd, BRIDGE_W_L, "Message 4");
+	printf("Message 4\n");
 	write_message(fd, BRIDGE_W_L, "Message 5");
+	printf("Message 5\n");
+}
+
+void generate_alphabetical_list(int fd)
+{
+	write_message(fd, BRIDGE_W_L, "Geodude");
+	printf("Geodude\n");
+	write_message(fd, BRIDGE_W_L, "Clefairy");
+	printf("Clefairy\n");
+	write_message(fd, BRIDGE_W_L, "Squirtle");
+	printf("Squirtle\n");
+	write_message(fd, BRIDGE_W_L, "Charizard");
+	printf("Charizard\n");
+	write_message(fd, BRIDGE_W_L, "Bellsprout");
+	printf("Bellsprout\n");
 }
 
 // Punto 6
-void invertList(int fd)
+void invert_list(int fd)
 {
-	generateList(fd);
+	printf("\nCURRENT LIST:\n");
+	generate_list(fd);
+
 	send_empty_command(fd, BRIDGE_INVERT_L);
+	printf("\nNEW LIST:\n");
+	read_all_messages(fd);
 }
 
+void concatenate_lists(int fd)
+{
+	send_empty_command(fd, BRIDGE_CONCAT_L);
+}
+
+// Punto 8
+void rotate_right_n_times(int fd)
+{
+	printf("\nCURRENT LIST:\n");
+	generate_list(fd);
+	int n = 3;
+	int i;
+	for (i = 0; i < n; i++)
+	{
+		write_int(fd, BRIDGE_ROTATE_L, &n);
+	}
+
+	printf("\nNEW LIST:\n");
+	read_all_messages(fd);
+}
+
+// Punto 9
+void clean_list(int fd)
+{
+	printf("\nCURRENT LIST:\n");
+	generate_list(fd);
+	generate_list(fd);
+
+	send_empty_command(fd, BRIDGE_CLEAN_L);
+
+	printf("\nNEW LIST:\n");
+	read_all_messages(fd);
+
+}
+
+// Punto 10
+void get_highest_string(int fd)
+{
+	printf("\nCURRENT LIST:\n");
+	generate_alphabetical_list(fd);
+
+	char message[100];
+	read_message(fd, BRIDGE_GREATER_VAL_L, message);
+
+	printf("\nHIGHEST VALUE: %s\n", message);
+}
 
 int main(int argc, char *argv[])
 {
@@ -149,11 +308,39 @@ int main(int argc, char *argv[])
 	switch (option)
 	{
 	case 1:
-		reverseLineReadingFromFile(fd);
+		reverse_lines_from_file(fd);
+		break;
+
+	case 3:
+		printf("%d\n", verify_closing_brackets(fd));
+		break;
+
+	case 4:
+		prior_queue(fd);
+		break;
+
+	case 5:
+		send_empty_command(fd, BRIDGE_DESTROY_L);
 		break;
 
 	case 6:
-		invertList(fd);
+		invert_list(fd);
+		break;
+
+	case 7:
+		concatenate_lists(fd);
+		break;
+
+	case 8:
+		rotate_right_n_times(fd);
+		break;
+
+	case 9:
+		clean_list(fd);
+		break;
+
+	case 10:
+		get_highest_string(fd);
 		break;
 
 	default:
