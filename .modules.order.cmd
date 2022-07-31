@@ -1,0 +1,1 @@
+cmd_/home/natog/1_virtual_DeSousa_Guerra_Ortiz/modules.order := {   echo /home/natog/1_virtual_DeSousa_Guerra_Ortiz/bridge.ko; :; } | awk '!x[$$0]++' - > /home/natog/1_virtual_DeSousa_Guerra_Ortiz/modules.order

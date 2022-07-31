@@ -86,6 +86,16 @@ void read_all_messages(int fd)
 	}
 }
 
+void read_all_messages_from_stack(int fd)
+{
+	char message[100];
+	while (send_empty_command(fd, BRIDGE_STATE_S) > 0)
+	{
+		read_message(fd, BRIDGE_R_S, message);
+		printf("%s\n", message);
+	}
+}
+
 // Punto 1
 void reverse_lines_from_file(int fd)
 {
@@ -98,11 +108,11 @@ void reverse_lines_from_file(int fd)
 	if (fp == NULL)
 		exit(EXIT_FAILURE);
 
-	// send_empty_command(fd, BRIDGE_CREATE_S);
+	send_empty_command(fd, BRIDGE_CREATE_S);				// Create new stack
 	printf("CURRENT LIST:\n");
 	while ((read = getline(&line, &len, fp)) != -1)
 	{
-		write_message(fd, BRIDGE_W_S, line);
+		write_message(fd, BRIDGE_W_S, line);					// Add element to stack
 		printf("%s", line);
 	}
 
@@ -111,8 +121,39 @@ void reverse_lines_from_file(int fd)
 		free(line);
 
 	printf("\nNEW LIST:\n");
+	read_all_messages_from_stack(fd);
+	send_empty_command(fd, BRIDGE_DESTROY_S);			// Destroy stack after usage
+}
+
+// Punto 2
+void randomize_lines_from_file(int fd)
+{
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+
+	fp = fopen("input.txt", "r");
+	if (fp == NULL)
+		exit(EXIT_FAILURE);
+
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+	printf("CURRENT LIST:\n");
+	while ((read = getline(&line, &len, fp)) != -1)
+	{
+		write_message(fd, BRIDGE_W_L, line);					// Add element to List
+		printf("%s", line);
+	}
+
+	fclose(fp);
+	if (line)
+		free(line);
+
+	send_empty_command(fd, BRIDGE_RANDOMIZE_L);			// Randomizes kernel List
+
+	printf("\nNEW LIST:\n");
 	read_all_messages(fd);
-	// send_empty_command(fd, BRIDGE_DESTROY_S);			//Destroy a stack completely releasing the memory (IMPORTANT!!)
+	send_empty_command(fd, BRIDGE_DESTROY_L);			// Destroy stack after usage
 }
 
 // Punto 3
@@ -123,6 +164,9 @@ int verify_closing_brackets(int fd)
 	fp = fopen("code_input.txt", "r");
 	if (fp == NULL)
 		exit(EXIT_FAILURE);
+
+	send_empty_command(fd, BRIDGE_CREATE_S);				// Create new stack
+	
 
 	while ((ch = fgetc(fp)) != EOF)
 	{
@@ -178,8 +222,11 @@ int verify_closing_brackets(int fd)
 	}
 	else
 	{
+		printf("Parenthesis and Brackets are Balanced\n");
 		return 1;
 	}
+
+	send_empty_command(fd, BRIDGE_DESTROY_S);			// Destroy stack after usage
 
 	fclose(fp);
 }
@@ -196,14 +243,24 @@ void generate_prior_q(int fd)
 	printf("Message 4, low prior\n");
 	write_message(fd, BRIDGE_W_HIGH_PRIOR_Q, "Message 5");
 	printf("Message 5, high prior\n");
+		write_message(fd, BRIDGE_W_MIDDLE_PRIOR_Q, "Message 6");
+	printf("Message 6, mid prior\n");
 }
 
-// Punto 4
+// Punto 4 - CAUSA SEGMENTATION FAULT EN SBIN, NO CORRER
 void prior_queue(int fd) 
 {
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+
 	printf("\nCURRENT QUEUE:\n");
 	generate_prior_q(fd);
+	read_all_messages(fd);
+
+	send_empty_command(fd, BRIDGE_DESTROY_L);				// Create new List
+
 }
+
+// Punto 5 - Se encuentra solo en bridge.c, se usa frecuentemente
 
 void generate_list(int fd)
 {
@@ -236,22 +293,35 @@ void generate_alphabetical_list(int fd)
 // Punto 6
 void invert_list(int fd)
 {
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+
 	printf("\nCURRENT LIST:\n");
 	generate_list(fd);
 
 	send_empty_command(fd, BRIDGE_INVERT_L);
 	printf("\nNEW LIST:\n");
 	read_all_messages(fd);
+
+	send_empty_command(fd, BRIDGE_DESTROY_L);				// Create new List
+
 }
 
+// Punto 7
 void concatenate_lists(int fd)
 {
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+
 	send_empty_command(fd, BRIDGE_CONCAT_L);
+
+	send_empty_command(fd, BRIDGE_DESTROY_L);				// Create new List
+
 }
 
 // Punto 8
 void rotate_right_n_times(int fd)
 {
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+
 	printf("\nCURRENT LIST:\n");
 	generate_list(fd);
 	int n = 3;
@@ -263,11 +333,16 @@ void rotate_right_n_times(int fd)
 
 	printf("\nNEW LIST:\n");
 	read_all_messages(fd);
+
+	send_empty_command(fd, BRIDGE_DESTROY_L);				// Create new List
+
 }
 
 // Punto 9
 void clean_list(int fd)
 {
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+
 	printf("\nCURRENT LIST:\n");
 	generate_list(fd);
 	generate_list(fd);
@@ -277,11 +352,17 @@ void clean_list(int fd)
 	printf("\nNEW LIST:\n");
 	read_all_messages(fd);
 
+	send_empty_command(fd, BRIDGE_DESTROY_L);				// Create new List
+
 }
 
 // Punto 10
 void get_highest_string(int fd)
 {
+
+	send_empty_command(fd, BRIDGE_CREATE_L);				// Create new List
+
+
 	printf("\nCURRENT LIST:\n");
 	generate_alphabetical_list(fd);
 
@@ -289,6 +370,9 @@ void get_highest_string(int fd)
 	read_message(fd, BRIDGE_GREATER_VAL_L, message);
 
 	printf("\nHIGHEST VALUE: %s\n", message);
+
+	send_empty_command(fd, BRIDGE_DESTROY_L);				// Create new List
+
 }
 
 int main(int argc, char *argv[])
@@ -309,6 +393,10 @@ int main(int argc, char *argv[])
 	{
 	case 1:
 		reverse_lines_from_file(fd);
+		break;
+
+	case 2:
+		randomize_lines_from_file(fd);
 		break;
 
 	case 3:

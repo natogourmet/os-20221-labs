@@ -31,5 +31,6 @@
 #define BRIDGE_CONCAT_L _IO('p', 23)
 #define BRIDGE_STATE_L _IO('p', 24)
 #define BRIDGE_DESTROY_L _IO('p', 25)
+#define BRIDGE_RANDOMIZE_L _IO('p', 26)
 
 #endif

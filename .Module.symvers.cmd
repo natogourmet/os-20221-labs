@@ -1,0 +1,1 @@
+cmd_/home/natog/1_virtual_DeSousa_Guerra_Ortiz/Module.symvers := sed 's/\.ko$$/\.o/' /home/natog/1_virtual_DeSousa_Guerra_Ortiz/modules.order | scripts/mod/modpost -m -a  -o /home/natog/1_virtual_DeSousa_Guerra_Ortiz/Module.symvers -e -i Module.symvers   -T -

@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "random.h": "c",
+    "fs.h": "c",
+    "types.h": "c"
+  }
+}
